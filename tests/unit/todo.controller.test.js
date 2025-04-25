@@ -4,12 +4,9 @@ const httpMocks = require('node-mocks-http');
 const newTodo = require("../mock-data/new-todo.json");
 const allTodos = require("../mock-data/all-todos.json");
 
-TodoModel.create = jest.fn()
-TodoModel.find = jest.fn()
-TodoModel.findById = jest.fn()
-TodoModel.findByIdAndUpdate = jest.fn()
+jest.mock("../../models/todo.model")
 
-const todoId = "680b298f553b17421508b17e";
+const todoId = "680b31f737891e38d4ae2adf";
 
 let req, res, next;
 beforeEach(() => {
@@ -49,6 +46,37 @@ describe("TodoController.createTodo", () => {
         expect(next).toBeCalledWith(errorMessage);
     });
 });
+
+describe("TodoController.deleteTodo", () => {
+    it("should have a deleteTodo function", () => {
+        expect(typeof TodoController.deleteTodo).toBe("function")
+    })
+    it("should delete with TodoModel.findByIdAndRemove", async () => {
+        req.params.todoId = todoId
+        await TodoController.deleteTodo(req, res, next);
+        expect(TodoModel.findByIdAndRemove).toBeCalledWith(req.params.todoId)
+    })
+    it("should return a response code of 200 and deletedTodoModel", async () => {
+        TodoModel.findByIdAndRemove.mockReturnValue(newTodo)
+        await TodoController.deleteTodo(req, res, next)
+        expect(res.statusCode).toBe(200)
+        expect(res._getJSONData()).toStrictEqual(newTodo)
+        expect(res._isEndCalled()).toBeTruthy();
+    })
+    it("should handle errors", async () => {
+        const errorMessage = {message: "Error deleting"};
+        const rejectedPromise = Promise.reject(errorMessage);
+        TodoModel.findByIdAndRemove.mockReturnValue(rejectedPromise);
+        await TodoController.deleteTodo(req,res,next);
+        expect(next).toBeCalledWith(errorMessage);
+    })
+    it("should return 404 when item doesn't exist", async () =>{
+        TodoModel.findByIdAndRemove.mockReturnValue(null);
+        await TodoController.deleteTodo(req,res,next);
+        expect(res.statusCode).toBe(404)
+        expect(res._isEndCalled()).toBeTruthy();
+    })
+})
 
 describe("TodoController.getTodos", () => {
     it("should have a getTodos function", () => {
